@@ -239,16 +239,15 @@ static const CGFloat kRowH      = 34;    // kFieldH + kMargin, keeps row gap ~3 
 
 - (void)_installEscapeMonitor {
     if (_escMonitor) return;
-    // Use __block + unsafe_unretained to avoid ARC-only __weak in MRR context.
-    // The monitor is always removed before self is deallocated (_close or dealloc).
-    MMFindBarView * __unsafe_unretained unsafeSelf = self;
+    // The block retains self (MRR: block captures strong reference via implicit retain).
+    // The monitor is always removed before self is deallocated (_close or dealloc),
+    // so the retain cycle is broken before -dealloc returns.
     _escMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown
                                                         handler:^NSEvent *(NSEvent *event) {
-        if (unsafeSelf.hidden) return event;
-        // keyCode 53 = Escape
+        if (self.hidden) return event;
         if (event.keyCode == 53) {
-            [unsafeSelf _close:nil];
-            return nil;  // consume the event
+            [self _close:nil];
+            return nil;
         }
         return event;
     }];
